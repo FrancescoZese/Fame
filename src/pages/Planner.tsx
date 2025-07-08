@@ -67,27 +67,22 @@ const Planner = () => {
       const weekStart = new Date().toISOString().slice(0, 10);
       // Prompt per LLM
       const prompt = `Genera un piano alimentare settimanale in formato JSON con 7 giorni (Lunedì-Domenica), per ogni giorno 4 pasti (Colazione, Pranzo, Merenda, Cena). Ogni pasto deve avere: id, title, day, meal_type, ingredients (array di oggetti con name, quantity, unit), description, instructions, nutrition (calorie, carboidrati, proteine, grassi). Rispondi solo con il JSON, senza testo aggiuntivo.`;
-      // Chiamata a Hugging Face Inference API (Llama-2)
-      const HF_TOKEN = '<INSERISCI_IL_TUO_TOKEN>'; // Inserisci qui il tuo token Hugging Face
+      // Chiamata al backend FastAPI locale
       const response = await fetch(
-        'https://api-inference.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf',
+        'http://localhost:8000/mealplan/generate',
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${HF_TOKEN}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ inputs: prompt })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt })
         }
       );
       const data = await response.json();
       // Parsing risposta: estrai solo il JSON
       let mealplanJson = null;
       try {
-        // Alcuni modelli restituiscono la risposta come testo, altri come oggetto
         const text = data?.[0]?.generated_text || data?.generated_text || data;
-        const match = text.match(/\{[\s\S]*\}/);
-        mealplanJson = match ? JSON.parse(match[0]) : JSON.parse(text);
+        const match = typeof text === 'string' ? text.match(/\{[\s\S]*\}/) : null;
+        mealplanJson = match ? JSON.parse(match[0]) : (typeof text === 'string' ? JSON.parse(text) : text);
       } catch (e) {
         throw new Error('Errore nel parsing della risposta AI');
       }
